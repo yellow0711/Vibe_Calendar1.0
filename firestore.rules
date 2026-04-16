@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    function isGroupMember(groupId) {
+      return isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    }
+    function isValidPhoto(data) {
+      return data.keys().hasAll(['date', 'imageUrl', 'userId', 'groupId', 'createdAt']) &&
+             data.date is string && data.date.size() == 10 &&
+             data.imageUrl is string && data.imageUrl.size() > 0 &&
+             data.userId == request.auth.uid &&
+             isGroupMember(data.groupId) &&
+             data.createdAt is timestamp &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() < 1000)) &&
+             (!('tags' in data) || (data.tags is list));
+    }
+    function isValidGroup(data) {
+      return data.keys().hasAll(['name', 'inviteCode', 'ownerId', 'members', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.inviteCode is string && data.inviteCode.size() > 0 &&
+             data.ownerId == request.auth.uid &&
+             data.members is list && data.members.hasAll([request.auth.uid]) &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: groups
+    // Fields: name, inviteCode, ownerId, members (array), createdAt
+    //
+    // Collection: photos
+    // Fields: date, imageUrl, userId, groupId, comment, tags (array), createdAt
+    //
+    // Collection: userTags
+    // Fields: userId, tags (array)
+
+    match /groups/{groupId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.members;
+      allow create: if isAuthenticated() && isValidGroup(request.resource.data);
+      allow update: if isAuthenticated() && (
+        // Allow joining via invite code (this is simplified, usually you'd check the code)
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) && 
+         request.resource.data.members.hasAll(resource.data.members) &&
+         request.resource.data.members.hasAll([request.auth.uid])) ||
+        // Allow owner to manage
+        (resource.data.ownerId == request.auth.uid && isValidGroup(request.resource.data))
+      );
+    }
+
+    match /photos/{photoId} {
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow create: if isAuthenticated() && isValidPhoto(request.resource.data);
+      allow delete: if isAuthenticated() && (isDocOwner() || isGroupMember(resource.data.groupId));
+      allow update: if isAuthenticated() && isGroupMember(resource.data.groupId) && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasAny(['comment', 'tags']) &&
+                    isValidPhoto(request.resource.data);
+    }
+
+    match /userTags/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

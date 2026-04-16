@@ -1,0 +1,5 @@
+{
+  "name": "Yearly Photo Calendar",
+  "description": "A calendar-based photo gallery (2019-2030) where users can upload and view photos for specific dates.",
+  "requestFramePermissions": []
+}

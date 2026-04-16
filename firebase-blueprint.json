@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Group": {
+      "title": "Group",
+      "description": "A collaborative group for sharing a calendar.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "inviteCode", "ownerId", "members", "createdAt"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "A photo uploaded for a specific date.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD format"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Base64 encoded image data"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "groupId": {
+          "type": "string",
+          "description": "The ID of the group this photo belongs to"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional text comment for the photo"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "date",
+        "imageUrl",
+        "userId",
+        "groupId",
+        "createdAt"
+      ]
+    },
+    "UserTags": {
+      "title": "UserTags",
+      "description": "Saved tags for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["userId", "tags"]
+    }
+  },
+  "firestore": {
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "Groups for collaborative calendars."
+    },
+    "/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "Collection of photos uploaded by users."
+    },
+    "/userTags/{userId}": {
+      "schema": "UserTags",
+      "description": "Personal tag library for each user."
+    }
+  }
+}
